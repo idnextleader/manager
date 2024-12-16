@@ -5,10 +5,12 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ArticleResource\Pages;
 use App\Filament\Resources\ArticleResource\RelationManagers;
 use App\Models\Article;
+use App\Models\Images;
 use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -18,6 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Storage;
 
 class ArticleResource extends Resource
 {
@@ -25,32 +28,13 @@ class ArticleResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    // public static function form(Form $form): Form
-    // {
-    //     return $form
-    //         ->schema([
-
-    //             TextInput::make('title'),
-    //             TextInput::make('content')->disabled(),
-    //             TextInput::make('description'),
-    //             Repeater::make('Image')
-    //                 ->simple(
-    //                     FileUpload::make('image')
-    //                         ->required()
-
-    //                 )->columns(1)->createItemButtonLabel('Tambah Gambar'),
-    //             RichEditor::make('content')->columnSpan(2),
-
-
-    //         ]);
-    // }
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 TextInput::make('title')->label('Title')->required(),
-                RichEditor::make('content')->label('Content')->columnSpan(2)->required(),
                 TextInput::make('description')->label('Description')->required(),
+                RichEditor::make('content')->label('Content')->columnSpan(2)->required(),
 
                 // Repeater untuk menambah gambar
                 Repeater::make('images')
@@ -59,38 +43,54 @@ class ArticleResource extends Resource
                         FileUpload::make('image')
                             ->label('Upload Image')
                             ->image() // Tipe file gambar
-                            ->required()
                             ->directory('articles/images') // Tentukan direktori penyimpanan
                             ->helperText('Upload multiple images for the article'),
                     ])
                     ->createItemButtonLabel('Tambah Gambar')
-                    ->columns(1), // Atur kolom sesuai kebutuhan
+                    ->columns(1)->columnSpan(2), // Atur kolom sesuai kebutuhan
+
+                Section::make('Dibuat Oleh')->schema([
+                    TextInput::make('published_by')
+                        ->label('Nama')
+                        ->required(),
+                    TextInput::make('published_position')
+                        ->label('Jabatan')
+                        ->required(),
+                    FileUpload::make('published_image')
+                        ->label('Foto')
+                        ->directory('articles/images/published')
+                        ->required(),
+
+                ])
             ]);
     }
 
+    // Tangani gambar yang dihapus dan diubah setelah form disimpan
+    public static function afterSave($record, array $data)
+    {
+        // Periksa apakah artikel sudah memiliki gambar
+        if (isset($data['images'])) {
+            $existingImages = $record->images; // Ambil gambar yang sudah ada
+            $newImages = collect($data['images'])->pluck('id')->toArray(); // ID gambar baru dari form
 
-    // public static function table(Table $table): Table
-    // {
-    //     return $table
-    //         ->columns([
-    //             TextColumn::make('title'),
-    //             TextColumn::make('content'),
-    //             ImageColumn::make('image'),
-    //             TextColumn::make('description'),
+            // Hapus gambar yang sudah tidak digunakan
+            $imagesToDelete = $existingImages->whereNotIn('id', $newImages);
+            foreach ($imagesToDelete as $image) {
+                // Hapus gambar di storage
+                Storage::delete($image->image); // Hapus file gambar dari storage
+                $image->delete(); // Hapus gambar dari database
+            }
 
-    //         ])
-    //         ->filters([
-    //             //
-    //         ])
-    //         ->actions([
-    //             Tables\Actions\EditAction::make(),
-    //         ])
-    //         ->bulkActions([
-    //             Tables\Actions\BulkActionGroup::make([
-    //                 Tables\Actions\DeleteBulkAction::make(),
-    //             ]),
-    //         ]);
-    // }
+            // Simpan gambar baru atau yang diperbarui
+            foreach ($data['images'] as $imageData) {
+                // Jika gambar tidak ada di database, buat entri baru
+                if (!isset($imageData['id'])) {
+                    $record->images()->create(['image' => $imageData['image']]);
+                }
+            }
+        }
+    }
+
     public static function table(Table $table): Table
     {
         return $table
