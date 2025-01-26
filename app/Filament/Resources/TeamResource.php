@@ -4,10 +4,13 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TeamResource\Pages;
 use App\Filament\Resources\TeamResource\RelationManagers;
+use App\Filament\Resources\TeamResource\Widgets\TeamWidget;
 use App\Models\Team;
 use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,7 +25,8 @@ class TeamResource extends Resource
 {
     protected static ?string $model = Team::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static ?string $navigationGroup = 'Manager Team';
 
     public static function form(Form $form): Form
     {
@@ -37,7 +41,9 @@ class TeamResource extends Resource
                     ->required(),
                 TextInput::make('linkedin')->label('Linkedin'),
                 TextInput::make('facebook')->label('Facebook'),
-                TextInput::make('instagram')->label('Instagram')
+                TextInput::make('instagram')->label('Instagram'),
+                Select::make('category_team_id')->relationship('categoryTeam', 'name')
+
 
 
             ]);
@@ -69,7 +75,7 @@ class TeamResource extends Resource
                 TextColumn::make('name')->label('Title'),
                 TextColumn::make('position')->label('Content'),
                 ImageColumn::make('image')  // Gunakan 'image' untuk kolom gambar
-                    ->disk('public')   // Direktori tempat gambar disimpan
+                    ->disk('public'), // Direktori tempat gambar disimpan
             ])
             ->filters([
                 // Filters jika diperlukan
@@ -91,6 +97,8 @@ class TeamResource extends Resource
             //
         ];
     }
+
+
 
     public static function getPages(): array
     {
