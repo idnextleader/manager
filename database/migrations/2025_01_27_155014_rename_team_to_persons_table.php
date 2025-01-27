@@ -11,18 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('category_teams', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->timestamps();
-        });
+        Schema::rename('teams', 'persons');
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('category_teams');
+        // Mengembalikan nama tabel 'persons' menjadi 'team'
+        Schema::rename('persons', 'team');
     }
 };
